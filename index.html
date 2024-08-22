@@ -22,40 +22,28 @@
     <video id="video" width="300" height="200" style="border: 1px solid black"></video>
     <div id="result"></div>
     <script>
-        const codeReader = new ZXing.BrowserQRCodeReader()
-        const videoInput = document.querySelector('video')
-        const resultContainer = document.querySelector('#result')
+        const codeReader = new ZXing.BrowserQRCodeReader();
+        const videoInput = document.querySelector('video');
+        const resultContainer = document.querySelector('#result');
 
-        // Adiciona suporte para o facingMode
         codeReader.listVideoInputDevices().then((videoInputDevices) => {
-            if (videoInputDevices.length > 0) {
-                const firstDeviceId = videoInputDevices[0].deviceId;
+            // Filtra para encontrar a câmera traseira
+            const rearCamera = videoInputDevices.find(device =>
+                device.label.toLowerCase().includes('back') || 
+                device.label.toLowerCase().includes('rear')
+            );
 
-                // Configure o facingMode para usar a câmera traseira
-                const constraints = {
-                    video: {
-                        deviceId: { exact: firstDeviceId },
-                        facingMode: 'environment' // Garante que a câmera traseira seja usada
-                    }
-                };
+            // Se a câmera traseira não for encontrada, use a primeira câmera disponível
+            const deviceId = rearCamera ? rearCamera.deviceId : videoInputDevices[0].deviceId;
 
-                navigator.mediaDevices.getUserMedia(constraints)
-                    .then(stream => {
-                        videoInput.srcObject = stream;
-                        videoInput.play();
-                        codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
-                            if (result) {
-                                handleQRResult(result.text);
-                            }
-                            if (error) {
-                                console.error(error);
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Erro ao acessar a câmera:', error);
-                    });
-            }
+            codeReader.decodeFromVideoDevice(deviceId, videoInput, (result, error) => {
+                if (result) {
+                    handleQRResult(result.text);
+                }
+                if (error) {
+                    console.error(error);
+                }
+            });
         });
 
         function handleQRResult(qrText) {
@@ -77,12 +65,12 @@
                 return;
             }
 
-            // Chama a função para atualizar a planilha Google
+            // Call the function to update the Google Sheets
             updateGoogleSheet(searchString, columnIndex);
         }
 
         function updateGoogleSheet(searchString, columnIndex) {
-            const apiKey = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Substitua com sua chave da API Google
+            const apiKey = 'YOUR_API_KEY'; // Substitua com sua chave da API Google
             const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
             const range = 'Atual'; // Nome da aba que será atualizada
 
