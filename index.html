@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de QR Code</title>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@googleapis/sheets@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        video {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leitor de QR Code</h1>
+    <video id="video" width="300" height="200" style="border: 1px solid black"></video>
+    <div id="result"></div>
+    <script>
+        const codeReader = new ZXing.BrowserQRCodeReader()
+        const videoInput = document.querySelector('video')
+        const resultContainer = document.querySelector('#result')
+
+        codeReader.listVideoInputDevices().then((videoInputDevices) => {
+            const firstDeviceId = videoInputDevices[0].deviceId
+            codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
+                if (result) {
+                    handleQRResult(result.text);
+                }
+                if (error) {
+                    console.error(error);
+                }
+            });
+        });
+
+        function handleQRResult(qrText) {
+            const [identifier, number] = qrText.split(' ');
+            let searchString = '';
+            let columnIndex = 0;
+
+            const now = new Date();
+            const year = now.getFullYear();
+
+            if (identifier === 'OF') {
+                searchString = `${number}/SAJ/${year}`;
+                columnIndex = 1; // Index da coluna "Ofício"
+            } else if (identifier === 'CI') {
+                searchString = `${identifier} ${number}-SAJ-${year}`;
+                columnIndex = 13; // Index da coluna "Observação"
+            } else {
+                resultContainer.textContent = 'Identificador desconhecido.';
+                return;
+            }
+
+            // Call the function to update the Google Sheets
+            updateGoogleSheet(searchString, columnIndex);
+        }
+
+        function updateGoogleSheet(searchString, columnIndex) {
+            const apiKey = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Substitua com sua chave da API Google
+            const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
+            const range = 'Atual'; // Nome da aba que será atualizada
+
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    const rows = data.values;
+                    const rowIndex = rows.findIndex(row => row[columnIndex] === searchString);
+
+                    if (rowIndex !== -1) {
+                        const row = rows[rowIndex];
+                        row[5] = new Date().toLocaleDateString('pt-BR'); // Atualiza a coluna "Descida Assinatura"
+                        row[12] = 'CX Aguardando protocolo'; // Atualiza a coluna "Caixa/Pasta"
+
+                        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}!A${rowIndex + 2}?valueInputOption=RAW&key=${apiKey}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                range: `${range}!A${rowIndex + 2}`,
+                                majorDimension: 'ROWS',
+                                values: [row]
+                            }),
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            resultContainer.textContent = 'Dados atualizados com sucesso!';
+                        })
+                        .catch(error => {
+                            console.error('Erro ao atualizar os dados:', error);
+                            resultContainer.textContent = 'Erro ao atualizar os dados.';
+                        });
+                    } else {
+                        resultContainer.textContent = 'Dados não encontrados.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar dados:', error);
+                    resultContainer.textContent = 'Erro ao buscar dados.';
+                });
+        }
+    </script>
+</body>
+</html>
