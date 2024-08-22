@@ -26,16 +26,36 @@
         const videoInput = document.querySelector('video')
         const resultContainer = document.querySelector('#result')
 
+        // Adiciona suporte para o facingMode
         codeReader.listVideoInputDevices().then((videoInputDevices) => {
-            const firstDeviceId = videoInputDevices[0].deviceId
-            codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
-                if (result) {
-                    handleQRResult(result.text);
-                }
-                if (error) {
-                    console.error(error);
-                }
-            });
+            if (videoInputDevices.length > 0) {
+                const firstDeviceId = videoInputDevices[0].deviceId;
+
+                // Configure o facingMode para usar a câmera traseira
+                const constraints = {
+                    video: {
+                        deviceId: { exact: firstDeviceId },
+                        facingMode: 'environment' // Garante que a câmera traseira seja usada
+                    }
+                };
+
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(stream => {
+                        videoInput.srcObject = stream;
+                        videoInput.play();
+                        codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
+                            if (result) {
+                                handleQRResult(result.text);
+                            }
+                            if (error) {
+                                console.error(error);
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Erro ao acessar a câmera:', error);
+                    });
+            }
         });
 
         function handleQRResult(qrText) {
@@ -57,7 +77,7 @@
                 return;
             }
 
-            // Call the function to update the Google Sheets
+            // Chama a função para atualizar a planilha Google
             updateGoogleSheet(searchString, columnIndex);
         }
 
