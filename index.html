@@ -3,16 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Reader</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Leitor de QR Code</title>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        video {
+            border: 1px solid black;
+        }
+    </style>
 </head>
 <body>
-    <h1>QR Code Reader</h1>
+    <h1>Leitor de QR Code</h1>
     <video id="video" width="300" height="200"></video>
-    <p id="result">Waiting for QR code scan...</p>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <div id="result"></div>
     <script src="app.js"></script>
-    <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};start()" onerror="this.onerror=function(){};start()"></script>
-
 </body>
 </html>
