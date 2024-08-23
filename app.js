@@ -1,112 +1,93 @@
-// Configuração para leitura do QR code
 const codeReader = new ZXing.BrowserQRCodeReader();
-const videoElement = document.getElementById('video');
-const resultElement = document.getElementById('result');
+const videoInput = document.querySelector('video');
+const resultContainer = document.querySelector('#result');
 
-// Iniciar a leitura do QR code
-codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
-    if (result) {
-        resultElement.textContent = `QR Code Data: ${result.text}`;
-        processQRCode(result.text);
-    }
-    if (error) {
-        console.error(error);
-    }
-});
-
-// Processar o QR code e atualizar a planilha
-function processQRCode(qrCodeText) {
-    let searchString;
-    const currentYear = new Date().getFullYear();
-
-    if (qrCodeText.startsWith('OF')) {
-        const parts = qrCodeText.split(' ');
-        if (parts.length === 2) {
-            const number = parts[1];
-            searchString = `${number}/SAJ/${currentYear}`;
-            updateGoogleSheet(searchString, 1);
-        }
-    } else if (qrCodeText.startsWith('CI')) {
-        const parts = qrCodeText.split(' ');
-        if (parts.length === 2) {
-            const number = parts[1];
-            searchString = `CI ${number}-SAJ-${currentYear}`;
-            updateGoogleSheet(searchString, 13);
-        }
-    }
-}
-
-// Atualizar a planilha Google Sheets
-function updateGoogleSheet(searchString, columnIndex) {
-    // Autenticação e configuração da API Google Sheets
-    gapi.load('auth2', () => {
-        gapi.auth2.init({
-            client_id: '349400116418-aldrjhmj2nvon58f2gv1601el2u9i2ak.apps.googleusercontent.com',
-            scope: 'https://www.googleapis.com/auth/spreadsheets',
-        }).then(() => {
-            gapi.load('client:auth2', () => {
-                gapi.client.init({
-                    apiKey: 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU',
-                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-                }).then(() => {
-                    const sheets = gapi.client.sheets.spreadsheets.values;
-                    sheets.get({
-                        spreadsheetId: '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c',
-                        range: 'Atual'
-                    }).then(response => {
-                        const data = response.result.values;
-                        let rowIndex = -1;
-
-                        // Encontrar a linha que contém o valor
-                        for (let i = 0; i < data.length; i++) {
-                            if (data[i][columnIndex] === searchString) {
-                                rowIndex = i;
-                                break;
-                            }
-                        }
-
-                        if (rowIndex !== -1) {
-                            const range = `Atual!A${rowIndex + 1}`;
-                            const row = data[rowIndex];
-                            row[5] = new Date().toLocaleDateString('pt-BR'); // Atualizar "Descida Assinatura"
-                            row[12] = 'CX Aguardando protocolo'; // Atualizar "Caixa/Pasta"
-                            const body = {
-                                values: [row]
-                            };
-                            sheets.update({
-                                spreadsheetId: '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c',
-                                range: range,
-                                valueInputOption: 'RAW',
-                                resource: body
-                            }).then(() => {
-                                resultElement.textContent = 'Dados atualizados com sucesso!';
-                            }).catch(error => {
-                                console.error('Error updating sheet:', error);
-                                resultElement.textContent = 'Erro ao atualizar os dados.';
-                            });
-                        } else {
-                            resultElement.textContent = 'Dados não encontrados.';
-                        }
-                    }).catch(error => {
-                        console.error('Error reading sheet:', error);
-                        resultElement.textContent = 'Erro ao ler a planilha.';
-                    });
-                });
-            });
+// Função para inicializar o leitor de QR Code
+function initializeReader() {
+    codeReader.listVideoInputDevices().then(videoInputDevices => {
+        const firstDeviceId = videoInputDevices.find(device => !device.label.toLowerCase().includes('front'))?.deviceId
+            || videoInputDevices[0].deviceId;
+        
+        codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
+            if (result) {
+                handleQRResult(result.text);
+            }
+            if (error) {
+                console.error(error);
+            }
         });
     });
 }
 
-// Carregar a biblioteca Google API
-function start() {
-    gapi.load('client:auth2', initClient);
+// Função para lidar com o resultado do QR Code
+function handleQRResult(qrText) {
+    const [identifier, number] = qrText.split(' ');
+    let searchString = '';
+    let columnIndex = 0;
+
+    const now = new Date();
+    const year = now.getFullYear();
+
+    if (identifier === 'OF') {
+        searchString = `${number}/SAJ/${year}`;
+        columnIndex = 0; // Índice da coluna "Ofício" (começa de 0)
+    } else if (identifier === 'CI') {
+        searchString = `${identifier} ${number}-SAJ-${year}`;
+        columnIndex = 13; // Índice da coluna "Observação" (começa de 0)
+    } else {
+        resultContainer.textContent = 'Identificador desconhecido.';
+        return;
+    }
+
+    // Atualizar a planilha do Google
+    updateGoogleSheet(searchString, columnIndex);
 }
 
-function initClient() {
-    gapi.client.init({
-        apiKey: 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU',
-        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-    }).then(() => {
-        // API client is initialized and ready to use
-    });
+// Função para atualizar a planilha do Google
+function updateGoogleSheet(searchString, columnIndex) {
+    const apiKey = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Sua chave API
+    const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
+    const range = 'Atual'; // Nome da aba que será atualizada
+
+    fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`)
+        .then(response => response.json())
+        .then(data => {
+            const rows = data.values;
+            const rowIndex = rows.findIndex(row => row[columnIndex] === searchString);
+
+            if (rowIndex !== -1) {
+                const row = rows[rowIndex];
+                row[5] = new Date().toLocaleDateString('pt-BR'); // Atualiza a coluna "Descida Assinatura"
+                row[12] = 'CX Aguardando protocolo'; // Atualiza a coluna "Caixa/Pasta"
+
+                fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}!A${rowIndex + 2}?valueInputOption=RAW&key=${apiKey}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        range: `${range}!A${rowIndex + 2}`,
+                        majorDimension: 'ROWS',
+                        values: [row]
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    resultContainer.textContent = 'Dados atualizados com sucesso!';
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar os dados:', error);
+                    resultContainer.textContent = 'Erro ao atualizar os dados.';
+                });
+            } else {
+                resultContainer.textContent = 'Dados não encontrados.';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar dados:', error);
+            resultContainer.textContent = 'Erro ao buscar dados.';
+        });
 }
+
+// Inicia o leitor de QR Code
+initializeReader();
