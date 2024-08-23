@@ -10,17 +10,21 @@ function initializeReader() {
         
         codeReader.decodeFromVideoDevice(firstDeviceId, videoInput, (result, error) => {
             if (result) {
+                console.log('QR Code lido:', result.text);
                 handleQRResult(result.text);
             }
             if (error) {
-                console.error(error);
+                console.error('Erro ao ler o QR Code:', error);
             }
         });
+    }).catch(error => {
+        console.error('Erro ao listar dispositivos de vídeo:', error);
     });
 }
 
 // Função para lidar com o resultado do QR Code
 function handleQRResult(qrText) {
+    console.log('Processando QR Code:', qrText);
     const [identifier, number] = qrText.split(' ');
     let searchString = '';
     let columnIndex = 0;
@@ -36,6 +40,7 @@ function handleQRResult(qrText) {
         columnIndex = 13; // Índice da coluna "Observação" (começa de 0)
     } else {
         resultContainer.textContent = 'Identificador desconhecido.';
+        console.log('Identificador desconhecido:', identifier);
         return;
     }
 
@@ -45,6 +50,7 @@ function handleQRResult(qrText) {
 
 // Função para atualizar a planilha do Google
 function updateGoogleSheet(searchString, columnIndex) {
+    console.log('Atualizando Google Sheets com:', searchString);
     const apiKey = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Sua chave API
     const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
     const range = 'Atual'; // Nome da aba que será atualizada
@@ -52,6 +58,7 @@ function updateGoogleSheet(searchString, columnIndex) {
     fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`)
         .then(response => response.json())
         .then(data => {
+            console.log('Dados da planilha recebidos:', data);
             const rows = data.values;
             const rowIndex = rows.findIndex(row => row[columnIndex] === searchString);
 
@@ -73,6 +80,7 @@ function updateGoogleSheet(searchString, columnIndex) {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Dados atualizados:', data);
                     resultContainer.textContent = 'Dados atualizados com sucesso!';
                 })
                 .catch(error => {
@@ -81,6 +89,7 @@ function updateGoogleSheet(searchString, columnIndex) {
                 });
             } else {
                 resultContainer.textContent = 'Dados não encontrados.';
+                console.log('Dados não encontrados para:', searchString);
             }
         })
         .catch(error => {
