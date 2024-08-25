@@ -1,119 +1,117 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de QR Code</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <script async defer src="https://apis.google.com/js/api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@googleapis/sheets@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        video {
+            border: 1px solid black;
+        }
+    </style>
 </head>
 <body>
-    <video id="video" width="300" height="200"></video>
+    <h1>Leitor de QR Code</h1>
+    <video id="video" width="300" height="200" style="border: 1px solid black"></video>
     <div id="result"></div>
-
     <script>
-        // Configuração para leitura do QR code
         const codeReader = new ZXing.BrowserQRCodeReader();
-        const videoElement = document.getElementById('video');
-        const resultElement = document.getElementById('result');
+        const videoInput = document.querySelector('video');
+        const resultContainer = document.querySelector('#result');
 
-        // Iniciar a leitura do QR code
-        codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
-            if (result) {
-                resultElement.textContent = `QR Code Data: ${result.text}`;
-                processQRCode(result.text);
-            }
-            if (error) {
-                console.error(error);
-            }
+        codeReader.listVideoInputDevices().then((videoInputDevices) => {
+            // Filtra para encontrar a câmera traseira
+            const rearCamera = videoInputDevices.find(device =>
+                device.label.toLowerCase().includes('back') ||
+                device.label.toLowerCase().includes('rear')
+            );
+
+            // Se a câmera traseira não for encontrada, use a primeira câmera disponível
+            const deviceId = rearCamera ? rearCamera.deviceId : videoInputDevices[0].deviceId;
+
+            codeReader.decodeFromVideoDevice(deviceId, videoInput, (result, error) => {
+                if (result) {
+                    handleQRResult(result.text);
+                }
+                if (error) {
+                    console.error(error);
+                }
+            });
         });
 
-        // Processar o QR code e atualizar a planilha
-        function processQRCode(qrCodeText) {
-            let searchString;
-            const currentYear = new Date().getFullYear();
+        function handleQRResult(qrText) {
+            const [identifier, number] = qrText.split(' ');
+            let searchString = '';
+            let columnIndex = 0;
 
-            if (qrCodeText.startsWith('OF')) {
-                const parts = qrCodeText.split(' ');
-                if (Array.isArray(parts) && parts.length === 2) {
-                    const number = parts[1];
-                    searchString = `${number}/SAJ/${currentYear}`;
-                    updateGoogleSheet(searchString, 1);
-                }
-            } else if (qrCodeText.startsWith('CI')) {
-                const parts = qrCodeText.split(' ');
-                if (Array.isArray(parts) && parts.length === 2) {
-                    const number = parts[1];
-                    searchString = `CI ${number}-SAJ-${currentYear}`;
-                    updateGoogleSheet(searchString, 13);
-                }
+            const now = new Date();
+            const year = now.getFullYear();
+
+            if (identifier === 'OF') {
+                searchString = `${number}/SAJ/${year}`;
+                columnIndex = 1; // Index da coluna "Ofício"
+            } else if (identifier === 'CI') {
+                searchString = `${identifier} ${number}-SAJ-${year}`;
+                columnIndex = 13; // Index da coluna "Observação"
+            } else {
+                resultContainer.textContent = 'Identificador desconhecido.';
+                return;
             }
+
+            // Call the function to update the Google Sheets
+            updateGoogleSheet(searchString, columnIndex);
         }
 
-        // Atualizar a planilha Google Sheets
         function updateGoogleSheet(searchString, columnIndex) {
-            // Autenticação e configuração da API Google Sheets
-            gapi.load('auth2', () => {
-                gapi.auth2.init({
-                    client_id: '574827934929-r8jul0jgvaerbgg2bhbdknf58g8b4frq.apps.googleusercontent.com',
-                    scope: 'https://www.googleapis.com/auth/spreadsheets',
-                }).then(() => {
-                    gapi.load('client:auth2', () => {
-                        gapi.client.init({
-                            apiKey: 'AIzaSyAIqEr2YSsV5sURl35ELRJETCKJYWqQDF0',
-                            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-                        }).then(() => {
-                            const sheets = gapi.client.sheets.spreadsheets.values;
-                            const spreadsheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c';
-                            sheets.get({
-                                spreadsheetId: spreadsheetId,
-                                range: 'Atual'
-                            }).then(response => {
-                                if (response && response.result && response.result.values) {
-                                    const data = response.result.values;
-                                    let rowIndex = -1;
+            const apiKey = 'YOUR_API_KEY'; // Substitua com sua chave da API Google
+            const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
+            const range = 'Atual'; // Nome da aba que será atualizada
 
-                                    // Encontrar a linha que contém o valor
-                                    for (let i = 0; i < data.length; i++) {
-                                        if (data[i][columnIndex] === searchString) {
-                                            rowIndex = i;
-                                            break;
-                                        }
-                                    }
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    const rows = data.values;
+                    const rowIndex = rows.findIndex(row => row[columnIndex] === searchString);
 
-                                    if (rowIndex !== -1) {
-                                        const range = `Atual!A${rowIndex + 1}`;
-                                        const row = data[rowIndex];
-                                        row[5] = new Date().toLocaleDateString('pt-BR'); // Atualizar "Descida Assinatura"
-                                        row[12] = 'CX Aguardando protocolo'; // Atualizar "Caixa/Pasta"
-                                        const body = {
-                                            values: [row]
-                                        };
-                                        sheets.update({
-                                            spreadsheetId: spreadsheetId,
-                                            range: range,
-                                            valueInputOption: 'RAW',
-                                            resource: body
-                                        }).then(() => {
-                                            resultElement.textContent = 'Dados atualizados com sucesso!';
-                                        }).catch(error => {
-                                            console.error('Error updating sheet:', error);
-                                            resultElement.textContent = 'Erro ao atualizar os dados.';
-                                        });
-                                    } else {
-                                        resultElement.textContent = 'Dados não encontrados.';
-                                    }
-                                } else {
-                                    console.error('Invalid response from Google Sheets API');
-                                    resultElement.textContent = 'Erro ao ler a planilha.';
-                                }
-                            }).catch(error => {
-                                console.error('Error reading sheet:', error);
-                                resultElement.textContent = 'Erro ao ler a planilha.';
-                            });
+                    if (rowIndex !== -1) {
+                        const row = rows[rowIndex];
+                        row[5] = new Date().toLocaleDateString('pt-BR'); // Atualiza a coluna "Descida Assinatura"
+                        row[12] = 'CX Aguardando protocolo'; // Atualiza a coluna "Caixa/Pasta"
+
+                        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}!A${rowIndex + 2}?valueInputOption=RAW&key=${apiKey}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                range: `${range}!A${rowIndex + 2}`,
+                                majorDimension: 'ROWS',
+                                values: [row]
+                            }),
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            resultContainer.textContent = 'Dados atualizados com sucesso!';
+                        })
+                        .catch(error => {
+                            console.error('Erro ao atualizar os dados:', error);
+                            resultContainer.textContent = 'Erro ao atualizar os dados.';
                         });
-                    });
+                    } else {
+                        resultContainer.textContent = 'Dados não encontrados.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar dados:', error);
+                    resultContainer.textContent = 'Erro ao buscar dados.';
                 });
-            });
         }
     </script>
 </body>
