@@ -36,7 +36,7 @@
             document.getElementById('result').innerText = `QR Code Scanned: ${decodedText}`;
 
             // Enviar o QR code escaneado para o Google Apps Script
-            const scriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbyHu1WwQnj6BZjYr9bi8OTDXuIQZiELgIVUXwV-DhuDDY2KG0zR3hHJQJFQozeVIzpNOQ/exec';
             fetch(scriptURL, {
                 method: 'POST',
                 body: JSON.stringify({ qr_code: decodedText }),
