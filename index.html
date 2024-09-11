@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,73 +8,46 @@
 </head>
 <body>
     <h1>QR Code Scanner</h1>
-    <video id="video" width="300" height="200" style="border: 1px solid black"></video>
-    <p id="result">Aguardando leitura do QR Code...</p>
+    <video id="video" width="100%" height="auto" style="border: 1px solid black;"></video>
+    <div id="result"></div>
 
     <script>
-        const video = document.getElementById('video');
-        const resultElement = document.getElementById('result');
         const codeReader = new ZXing.BrowserQRCodeReader();
+        const videoElement = document.getElementById('video');
+        const resultElement = document.getElementById('result');
 
-        function startVideo() {
-            navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: "environment", 
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 720 }
-                } 
+        codeReader
+            .decodeFromVideoDevice(null, videoElement, (result, error) => {
+                if (result) {
+                    const qrData = result.text;
+                    resultElement.innerText = `QR Code lido: ${qrData}`;
+
+                    // Enviar dados para o Google Apps Script
+                    fetch('https://script.google.com/macros/s/AKfycbyTdMSEIZMuRUR5pdh0wPsr487VmbAC8EAfY11T11xfEK629SyLR1uM7gxyyBen0C_WUw/exec', {  // Substitua pela URL do seu aplicativo da web
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ data: qrData }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            resultElement.innerText += ` - ${data.message}`;
+                        } else {
+                            resultElement.innerText += ` - Erro: ${data.message}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao enviar dados:', error);
+                        resultElement.innerText += " - Erro ao enviar dados para o servidor.";
+                    });
+                }
+                if (error) {
+                    console.error(error);
+                }
             })
-            .then(stream => {
-                video.srcObject = stream;
-                codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
-                    if (result) {
-                        resultElement.innerText = result.text;
-                        stopVideo();
-
-                        // Envia os dados do QR code para o Google Apps Script
-                        fetch('https://script.google.com/macros/s/AKfycbyHu1WwQnj6BZjYr9bi8OTDXuIQZiELgIVUXwV-DhuDDY2KG0zR3hHJQJFQozeVIzpNOQ/exec', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ data: result.text }),
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === "success") {
-                                resultElement.innerText = "QR Code lido com sucesso: " + data.message;
-                            } else {
-                                resultElement.innerText = "Erro: " + data.message;
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Erro ao enviar dados:', error);
-                            resultElement.innerText = "Erro ao enviar dados para o servidor.";
-                        });
-                    }
-                    if (err && !(err instanceof ZXing.NotFoundException)) {
-                        console.error(err);
-                    }
-                });
-            })
-            .catch(err => {
-                console.error("Error accessing the camera: ", err);
-                resultElement.innerText = "Error accessing the camera.";
-            });
-        }
-
-        function stopVideo() {
-            const stream = video.srcObject;
-            const tracks = stream.getTracks();
-
-            tracks.forEach(function(track) {
-                track.stop();
-            });
-
-            video.srcObject = null;
-        }
-
-        window.addEventListener('load', startVideo);
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>
