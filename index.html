@@ -4,45 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        #video {
-            width: 300px;
-            height: 300px;
-            border: 1px solid black;
-        }
-
-        #result {
-            margin-top: 20px;
-        }
-    </style>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
     <h1>QR Code Scanner</h1>
-    <video id="video" autoplay></video>
-    <div id="result"></div>
+    <video id="video" width="300" height="200" style="border: 1px solid black"></video>
+    <p id="result">Aguardando leitura do QR Code...</p>
 
     <script>
         const video = document.getElementById('video');
+        const resultElement = document.getElementById('result');
+        const codeReader = new ZXing.BrowserQRCodeReader();
 
         function startVideo() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(stream => {
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Error accessing the camera: ", err);
-                    document.getElementById('result').innerText = "Error accessing the camera.";
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "environment", 
+                    width: { ideal: 1280 }, 
+                    height: { ideal: 720 }
+                } 
+            })
+            .then(stream => {
+                video.srcObject = stream;
+                codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+                    if (result) {
+                        resultElement.innerText = result.text;
+                        stopVideo();
+                    }
+                    if (err && !(err instanceof ZXing.NotFoundException)) {
+                        console.error(err);
+                    }
                 });
+            })
+            .catch(err => {
+                console.error("Error accessing the camera: ", err);
+                resultElement.innerText = "Error accessing the camera.";
+            });
         }
 
         function stopVideo() {
