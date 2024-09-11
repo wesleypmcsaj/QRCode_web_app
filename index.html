@@ -3,116 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de QR Code</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@googleapis/sheets@latest"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-        }
-        video {
-            border: 1px solid black;
-        }
-    </style>
+    <title>QR Code Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
-    <h1>Leitor de QR Code</h1>
-    <video id="video" width="300" height="200" style="border: 1px solid black"></video>
-    <div id="result"></div>
+    <h1>QR Code Scanner</h1>
+    <div id="qr-reader" style="width: 500px;"></div>
+    <div id="qr-result"></div>
+
     <script>
-        const codeReader = new ZXing.BrowserQRCodeReader();
-        const videoInput = document.querySelector('video');
-        const resultContainer = document.querySelector('#result');
-
-        codeReader.listVideoInputDevices().then((videoInputDevices) => {
-            // Filtra para encontrar a câmera traseira
-            const rearCamera = videoInputDevices.find(device =>
-                device.label.toLowerCase().includes('back') ||
-                device.label.toLowerCase().includes('rear')
-            );
-
-            // Se a câmera traseira não for encontrada, use a primeira câmera disponível
-            const deviceId = rearCamera ? rearCamera.deviceId : videoInputDevices[0].deviceId;
-
-            codeReader.decodeFromVideoDevice(deviceId, videoInput, (result, error) => {
-                if (result) {
-                    handleQRResult(result.text);
-                }
-                if (error) {
-                    console.error(error);
-                }
-            });
-        });
-
-        function handleQRResult(qrText) {
-            const [identifier, number] = qrText.split(' ');
-            let searchString = '';
-            let columnIndex = 0;
-
-            const now = new Date();
-            const year = now.getFullYear();
-
-            if (identifier === 'OF') {
-                searchString = `${number}/SAJ/${year}`;
-                columnIndex = 1; // Index da coluna "Ofício"
-            } else if (identifier === 'CI') {
-                searchString = `${identifier} ${number}-SAJ-${year}`;
-                columnIndex = 13; // Index da coluna "Observação"
-            } else {
-                resultContainer.textContent = 'Identificador desconhecido.';
-                return;
-            }
-
-            // Call the function to update the Google Sheets
-            updateGoogleSheet(searchString, columnIndex);
+        function onScanSuccess(qrCodeMessage) {
+            document.getElementById('qr-result').innerText = `QR Code: ${qrCodeMessage}`;
+            
+            // Enviar o QR code ao Google Apps Script para processamento
+            fetch('https://script.google.com/macros/s/AKfycbyHu1WwQnj6BZjYr9bi8OTDXuIQZiELgIVUXwV-DhuDDY2KG0zR3hHJQJFQozeVIzpNOQ/exec', {
+                method: 'POST',
+                body: JSON.stringify({ qrData: qrCodeMessage }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => console.log('Success:', data))
+            .catch((error) => console.error('Error:', error));
         }
 
-        function updateGoogleSheet(searchString, columnIndex) {
-            const apiKey = 'YOUR_API_KEY'; // Substitua com sua chave da API Google
-            const sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // ID da sua planilha
-            const range = 'Atual'; // Nome da aba que será atualizada
-
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`)
-                .then(response => response.json())
-                .then(data => {
-                    const rows = data.values;
-                    const rowIndex = rows.findIndex(row => row[columnIndex] === searchString);
-
-                    if (rowIndex !== -1) {
-                        const row = rows[rowIndex];
-                        row[5] = new Date().toLocaleDateString('pt-BR'); // Atualiza a coluna "Descida Assinatura"
-                        row[12] = 'CX Aguardando protocolo'; // Atualiza a coluna "Caixa/Pasta"
-
-                        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}!A${rowIndex + 2}?valueInputOption=RAW&key=${apiKey}`, {
-                            method: 'PUT',
-                            body: JSON.stringify({
-                                range: `${range}!A${rowIndex + 2}`,
-                                majorDimension: 'ROWS',
-                                values: [row]
-                            }),
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            resultContainer.textContent = 'Dados atualizados com sucesso!';
-                        })
-                        .catch(error => {
-                            console.error('Erro ao atualizar os dados:', error);
-                            resultContainer.textContent = 'Erro ao atualizar os dados.';
-                        });
-                    } else {
-                        resultContainer.textContent = 'Dados não encontrados.';
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao buscar dados:', error);
-                    resultContainer.textContent = 'Erro ao buscar dados.';
-                });
-        }
+        var html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
 </html>
