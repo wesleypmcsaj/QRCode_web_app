@@ -30,6 +30,27 @@
                     if (result) {
                         resultElement.innerText = result.text;
                         stopVideo();
+
+                        // Envia os dados do QR code para o Google Apps Script
+                        fetch('https://script.google.com/macros/s/AKfycbyHu1WwQnj6BZjYr9bi8OTDXuIQZiELgIVUXwV-DhuDDY2KG0zR3hHJQJFQozeVIzpNOQ/exec', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ data: result.text }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === "success") {
+                                resultElement.innerText = "QR Code lido com sucesso: " + data.message;
+                            } else {
+                                resultElement.innerText = "Erro: " + data.message;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro ao enviar dados:', error);
+                            resultElement.innerText = "Erro ao enviar dados para o servidor.";
+                        });
                     }
                     if (err && !(err instanceof ZXing.NotFoundException)) {
                         console.error(err);
