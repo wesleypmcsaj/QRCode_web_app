@@ -5,30 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
     <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #reader {
+            width: 300px;
+            height: 300px;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <h1>QR Code Scanner</h1>
-    <div id="qr-reader" style="width: 500px;"></div>
-    <div id="qr-result"></div>
+    <div id="reader"></div>
+    <div id="result"></div>
 
     <script>
-        function onScanSuccess(qrCodeMessage) {
-            document.getElementById('qr-result').innerText = `QR Code: ${qrCodeMessage}`;
-            
-            // Enviar o QR code ao Google Apps Script para processamento
-            fetch('https://script.google.com/macros/s/AKfycbyHu1WwQnj6BZjYr9bi8OTDXuIQZiELgIVUXwV-DhuDDY2KG0zR3hHJQJFQozeVIzpNOQ/exec', {
+        function onScanSuccess(decodedText, decodedResult) {
+            document.getElementById('result').innerText = `QR Code Scanned: ${decodedText}`;
+
+            // Enviar o QR code escaneado para o Google Apps Script
+            const scriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
+            fetch(scriptURL, {
                 method: 'POST',
-                body: JSON.stringify({ qrData: qrCodeMessage }),
+                body: JSON.stringify({ qr_code: decodedText }),
                 headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(data => console.log('Success:', data))
-            .catch((error) => console.error('Error:', error));
+            }).then(response => response.text())
+              .then(result => {
+                  console.log('Success:', result);
+              }).catch(error => {
+                  console.error('Error:', error);
+              });
         }
 
-        var html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render(onScanSuccess);
+        function onScanFailure(error) {
+            console.warn(`QR code scan error: ${error}`);
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+
+        html5QrCode.start(
+            { facingMode: "environment" }, // Use a câmera traseira
+            {
+                fps: 10, // Frames por segundo
+                qrbox: 250 // Tamanho da área de visualização do QR code
+            },
+            onScanSuccess,
+            onScanFailure
+        ).catch(err => {
+            console.error(`Error starting camera: ${err}`);
+        });
     </script>
 </body>
 </html>
