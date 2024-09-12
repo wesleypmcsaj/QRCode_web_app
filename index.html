@@ -22,8 +22,8 @@
                     const qrData = result.text;
                     resultElement.innerText = `QR Code lido: ${qrData}`;
 
-                    // Enviar dados para o Google Apps Script usando GET
-                    fetch(`https://script.google.com/macros/s/AKfycbyWYo0k2Y-KTFTKDpIUI-dJNb24Za-En1n3kmVOM59p2o5LizeWYtKegkaUTF4xLjDa/exec?data=${encodeURIComponent(qrData)}`, {  
+                    // Enviar dados para o Google Apps Script
+                    fetch('https://script.google.com/macros/s/AKfycbyWYo0k2Y-KTFTKDpIUI-dJNb24Za-En1n3kmVOM59p2o5LizeWYtKegkaUTF4xLjDa/exec?data=' + encodeURIComponent(qrData), {  // Substitua pela URL do seu aplicativo da web
                         method: 'GET',
                     })
                     .then(response => response.json())
