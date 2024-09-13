@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        #debug {
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap; /* Para preservar quebras de linha */
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 <body>
     <h1>QR Code Scanner</h1>
@@ -20,9 +30,7 @@
 
         // Função para exibir mensagens de depuração
         function logDebug(message) {
-            const p = document.createElement('p');
-            p.textContent = message;
-            debugElement.appendChild(p);
+            debugElement.textContent += `${message}\n`;
         }
 
         codeReader
@@ -42,6 +50,9 @@
                     })
                     .then(response => {
                         logDebug(`Resposta recebida do servidor: ${response.status}`);
+                        if (!response.ok) {
+                            throw new Error(`Resposta do servidor não OK: ${response.status}`);
+                        }
                         return response.json();
                     })
                     .then(data => {
@@ -60,12 +71,12 @@
                     });
                 }
                 if (error) {
-                    console.error(error);
+                    console.error('Erro na leitura do QR Code:', error);
                     logDebug(`Erro na leitura do QR Code: ${error.message}`);
                 }
             })
             .catch(err => {
-                console.error(err);
+                console.error('Erro ao iniciar a leitura do QR Code:', err);
                 logDebug(`Erro ao iniciar a leitura do QR Code: ${err.message}`);
             });
     </script>
