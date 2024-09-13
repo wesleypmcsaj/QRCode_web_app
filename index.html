@@ -32,8 +32,8 @@
                     resultElement.innerText = `QR Code lido: ${qrData}`;
                     logDebug(`Dados lidos do QR Code: ${qrData}`);
 
-                    // Enviar dados para o Webhook.site
-                    fetch('https://webhook.site/dc5046be-1c13-427a-92c5-8fa45edd931c', {  // Substitua pela URL fornecida pelo Webhook.site
+                    // Enviar dados para o Google Apps Script
+                    fetch('https://script.google.com/macros/s/AKfycbw-A8c68OLt8vItyx1VlON5-aXPH0kXuRrvIVmS9tKbMCLeKPRe7VNzZgSHWU9UgR7Q/exec', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -42,6 +42,9 @@
                     })
                     .then(response => {
                         logDebug(`Resposta recebida do servidor: ${response.status}`);
+                        if (!response.ok) {
+                            throw new Error(`Erro no servidor: ${response.status}`);
+                        }
                         return response.json();
                     })
                     .then(data => {
