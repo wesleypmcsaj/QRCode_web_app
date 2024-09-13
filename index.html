@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <style>
-        #debug {
-            margin-top: 20px;
-            font-family: monospace;
-            white-space: pre-wrap; /* Para preservar quebras de linha */
-            background-color: #f0f0f0;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-    </style>
 </head>
 <body>
     <h1>QR Code Scanner</h1>
@@ -30,7 +20,9 @@
 
         // Função para exibir mensagens de depuração
         function logDebug(message) {
-            debugElement.textContent += `${message}\n`;
+            const p = document.createElement('p');
+            p.textContent = message;
+            debugElement.appendChild(p);
         }
 
         codeReader
@@ -40,8 +32,8 @@
                     resultElement.innerText = `QR Code lido: ${qrData}`;
                     logDebug(`Dados lidos do QR Code: ${qrData}`);
 
-                    // Enviar dados para o Google Apps Script
-                    fetch('https://webhook.site/1931f949-c9db-4285-9886-6f6e68319eac', {  // Substitua pela URL do seu aplicativo da web
+                    // Enviar dados para o Webhook.site
+                    fetch('https://webhook.site/1931f949-c9db-4285-9886-6f6e68319eac', {  // Substitua pela URL fornecida pelo Webhook.site
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -50,9 +42,6 @@
                     })
                     .then(response => {
                         logDebug(`Resposta recebida do servidor: ${response.status}`);
-                        if (!response.ok) {
-                            throw new Error(`Resposta do servidor não OK: ${response.status}`);
-                        }
                         return response.json();
                     })
                     .then(data => {
@@ -71,12 +60,12 @@
                     });
                 }
                 if (error) {
-                    console.error('Erro na leitura do QR Code:', error);
+                    console.error(error);
                     logDebug(`Erro na leitura do QR Code: ${error.message}`);
                 }
             })
             .catch(err => {
-                console.error('Erro ao iniciar a leitura do QR Code:', err);
+                console.error(err);
                 logDebug(`Erro ao iniciar a leitura do QR Code: ${err.message}`);
             });
     </script>
