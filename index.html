@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Scanner</title>
+    <title>QR Code Scanner com Axios</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- Importando Axios -->
 </head>
 <body>
     <h1>QR Code Scanner</h1>
     <video id="video" width="100%" height="auto" style="border: 1px solid black;"></video>
     <div id="result"></div>
-    <div id="debug"></div> <!-- Adiciona uma nova div para exibir mensagens de depuração -->
+    <div id="debug"></div> <!-- Div para exibir mensagens de depuração -->
 
     <script>
         const codeReader = new ZXing.BrowserQRCodeReader();
@@ -32,28 +33,18 @@
                     resultElement.innerText = `QR Code lido: ${qrData}`;
                     logDebug(`Dados lidos do QR Code: ${qrData}`);
 
-                    // Enviar dados para o Google Apps Script
-                    fetch('https://script.google.com/macros/s/AKfycbwDUdyK57Fl3HNwgPaXeOJdL3LscojrjEXS4jNlhgXKCp9fsWSFPQdEsAEGPJHs6jil/exec', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ data: qrData }),
+                    // Enviar dados usando Axios
+                    axios.post('https://script.google.com/macros/s/AKfycbwDUdyK57Fl3HNwgPaXeOJdL3LscojrjEXS4jNlhgXKCp9fsWSFPQdEsAEGPJHs6jil/exec', {
+                        data: qrData
                     })
                     .then(response => {
                         logDebug(`Resposta recebida do servidor: ${response.status}`);
-                        if (!response.ok) {
-                            throw new Error(`Erro no servidor: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            resultElement.innerText += ` - ${data.message}`;
-                            logDebug(`Resposta de sucesso: ${data.message}`);
+                        if (response.data.success) {
+                            resultElement.innerText += ` - ${response.data.message}`;
+                            logDebug(`Resposta de sucesso: ${response.data.message}`);
                         } else {
-                            resultElement.innerText += ` - Erro: ${data.message}`;
-                            logDebug(`Erro recebido: ${data.message}`);
+                            resultElement.innerText += ` - Erro: ${response.data.message}`;
+                            logDebug(`Erro recebido: ${response.data.message}`);
                         }
                     })
                     .catch(error => {
@@ -62,6 +53,7 @@
                         logDebug(`Erro ao enviar dados: ${error.message}`);
                     });
                 }
+
                 if (error) {
                     console.error(error);
                     logDebug(`Erro na leitura do QR Code: ${error.message}`);
