@@ -3,66 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Scanner com Axios</title>
+    <title>QR Code Scanner</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- Importando Axios -->
+    <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
     <h1>QR Code Scanner</h1>
     <video id="video" width="100%" height="auto" style="border: 1px solid black;"></video>
     <div id="result"></div>
-    <div id="debug"></div> <!-- Div para exibir mensagens de depuração -->
 
     <script>
+        // Configurações do Google API
+        const CLIENT_ID = '349400116418-aldrjhmj2nvon58f2gv1601el2u9i2ak.apps.googleusercontent.com'; // Substitua pelo seu client_id
+        const API_KEY = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Substitua pela sua API Key
+        const SPREADSHEET_ID = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // Substitua pelo ID da sua planilha
+        const SHEET_NAME = 'Atual'; // Nome da aba na planilha
+
+        let isAuthenticated = false;
+
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+                scope: "https://www.googleapis.com/auth/spreadsheets"
+            }).then(function () {
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+            });
+        }
+
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                isAuthenticated = true;
+                console.log('Autenticado com sucesso!');
+            } else {
+                gapi.auth2.getAuthInstance().signIn();
+            }
+        }
+
+        function updateSheet(qrData) {
+            if (!isAuthenticated) {
+                console.error('Usuário não autenticado');
+                return;
+            }
+
+            const anoAtual = new Date().getFullYear();
+            let range = '';
+            let values = [];
+
+            if (qrData.startsWith("OF")) {
+                const numOficio = qrData.split(" ")[1];
+                const termoBusca = `${numOficio}/SAJ/${anoAtual}`;
+                range = `${SHEET_NAME}!A:A`;
+                values = [[termoBusca, new Date(), "CX Aguardando protocolo"]];
+            } else if (qrData.startsWith("CI")) {
+                const numCi = qrData.split(" ")[1];
+                const termoBusca = `CI ${numCi}-SAJ-${anoAtual}`;
+                range = `${SHEET_NAME}!O:O`;
+                values = [[termoBusca, new Date(), "CX aguardando resposta"]];
+            } else {
+                console.error("Tipo de documento não reconhecido.");
+                return;
+            }
+
+            const request = gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: SPREADSHEET_ID,
+                range: range,
+                valueInputOption: 'RAW',
+                values: values
+            });
+
+            request.then(function(response) {
+                console.log('Planilha atualizada com sucesso:', response.result);
+            }, function(reason) {
+                console.error('Erro ao atualizar a planilha:', reason.result.error.message);
+            });
+        }
+
+        // Inicializa a API
+        gapi.load('client:auth2', initClient);
+
         const codeReader = new ZXing.BrowserQRCodeReader();
         const videoElement = document.getElementById('video');
         const resultElement = document.getElementById('result');
-        const debugElement = document.getElementById('debug'); // Seleciona o elemento de depuração
 
-        // Função para exibir mensagens de depuração
-        function logDebug(message) {
-            const p = document.createElement('p');
-            p.textContent = message;
-            debugElement.appendChild(p);
-        }
-
-        codeReader
-            .decodeFromVideoDevice(null, videoElement, (result, error) => {
-                if (result) {
-                    const qrData = result.text;
-                    resultElement.innerText = `QR Code lido: ${qrData}`;
-                    logDebug(`Dados lidos do QR Code: ${qrData}`);
-
-                    // Enviar dados usando Axios
-                    axios.post('https://script.google.com/macros/s/AKfycbwDUdyK57Fl3HNwgPaXeOJdL3LscojrjEXS4jNlhgXKCp9fsWSFPQdEsAEGPJHs6jil/exec', {
-                        data: qrData
-                    })
-                    .then(response => {
-                        logDebug(`Resposta recebida do servidor: ${response.status}`);
-                        if (response.data.success) {
-                            resultElement.innerText += ` - ${response.data.message}`;
-                            logDebug(`Resposta de sucesso: ${response.data.message}`);
-                        } else {
-                            resultElement.innerText += ` - Erro: ${response.data.message}`;
-                            logDebug(`Erro recebido: ${response.data.message}`);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao enviar dados:', error);
-                        resultElement.innerText += " - Erro ao enviar dados para o servidor.";
-                        logDebug(`Erro ao enviar dados: ${error.message}`);
-                    });
-                }
-
-                if (error) {
-                    console.error(error);
-                    logDebug(`Erro na leitura do QR Code: ${error.message}`);
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                logDebug(`Erro ao iniciar a leitura do QR Code: ${err.message}`);
-            });
+        codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
+            if (result) {
+                const qrData = result.text;
+                resultElement.innerText = `QR Code lido: ${qrData}`;
+                updateSheet(qrData); // Atualiza a planilha com os dados lidos
+            }
+            if (error) {
+                console.error(error);
+            }
+        }).catch(err => {
+            console.error(err);
+        });
     </script>
 </body>
 </html>
