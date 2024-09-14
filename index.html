@@ -52,32 +52,67 @@
             let range = '';
             let values = [];
 
-            if (qrData.startsWith("OF")) {
-                const numOficio = qrData.split(" ")[1];
-                const termoBusca = `${numOficio}/SAJ/${anoAtual}`;
-                range = `${SHEET_NAME}!A:A`;
-                values = [[termoBusca, new Date(), "CX Aguardando protocolo"]];
-            } else if (qrData.startsWith("CI")) {
-                const numCi = qrData.split(" ")[1];
-                const termoBusca = `CI ${numCi}-SAJ-${anoAtual}`;
-                range = `${SHEET_NAME}!O:O`;
-                values = [[termoBusca, new Date(), "CX aguardando resposta"]];
+            // Separar identificador e número do QR code
+            const [identificador, numero] = qrData.split(' ');
+            const num = numero.split('-')[0]; // Extrair apenas o número (sem ano)
+
+            let colIndex, searchColumn;
+            if (identificador === 'OF') {
+                colIndex = 1; // Coluna 1 para OF
+                searchColumn = 'A:A';
+                values = [["Atualizado", new Date()]]; // Dados a serem atualizados
+            } else if (identificador === 'CI') {
+                colIndex = 14; // Coluna 14 para CI
+                searchColumn = 'O:O';
+                values = [["Atualizado", new Date()]]; // Dados a serem atualizados
             } else {
                 console.error("Tipo de documento não reconhecido.");
                 return;
             }
 
-            const request = gapi.client.sheets.spreadsheets.values.update({
+            // Buscar o número na coluna específica
+            const request = gapi.client.sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
-                range: range,
-                valueInputOption: 'RAW',
-                values: values
+                range: searchColumn
             });
 
-            request.then(function(response) {
-                console.log('Planilha atualizada com sucesso:', response.result);
-            }, function(reason) {
-                console.error('Erro ao atualizar a planilha:', reason.result.error.message);
+            request.then(response => {
+                const data = response.result.values;
+                let cellToUpdate = '';
+                let rowIndex = -1;
+
+                // Encontrar a linha onde o número está presente
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i][0] === num) {
+                        rowIndex = i + 1; // Ajustar índice para a linha correta
+                        cellToUpdate = `${SHEET_NAME}!${colIndex}${rowIndex}`;
+                        break;
+                    }
+                }
+
+                if (rowIndex === -1) {
+                    console.error("Número não encontrado.");
+                    return;
+                }
+
+                // Atualizar a célula específica
+                const updateRequest = gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: cellToUpdate,
+                    valueInputOption: 'RAW',
+                    resource: {
+                        values: [["Atualizado", new Date().toISOString()]]
+                    }
+                });
+
+                updateRequest.then(function(response) {
+                    console.log('Planilha atualizada com sucesso:', response.result);
+                }, function(reason) {
+                    console.error('Erro ao atualizar a planilha:', reason.result.error.message);
+                });
+
+            }, reason => {
+                console.error('Erro ao obter os valores da planilha:', reason.result.error.message);
             });
         }
 
