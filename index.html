@@ -1,140 +1,98 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Scanner</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <title>Leitor de QR Code</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        #reader {
+            width: 100%;
+            height: 100vh;
+            background: #000;
+        }
+    </style>
 </head>
 <body>
-    <h1>QR Code Scanner</h1>
-    <video id="video" width="100%" height="auto" style="border: 1px solid black;"></video>
-    <div id="result"></div>
-
+    <div id="reader"></div>
     <script>
-        // Configurações do Google API
-        const CLIENT_ID = '349400116418-aldrjhmj2nvon58f2gv1601el2u9i2ak.apps.googleusercontent.com'; // Substitua pelo seu client_id
-        const API_KEY = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU'; // Substitua pela sua API Key
-        const SPREADSHEET_ID = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c'; // Substitua pelo ID da sua planilha
-        const SHEET_NAME = 'Atual'; // Nome da aba na planilha
+        let sheetId = '16_zlC5bRdyGTqFcVFvRIBCYzP-fjoPN9i64tD5DGe5c';
+        let apiKey = 'AIzaSyD8BjrZwR13tlF2AGr0Kjcf2g3IkfN2mfU';
+        let clientId = '349400116418-aldrjhmj2nvon58f2gv1601el2u9i2ak.apps.googleusercontent.com'; // substitua pelo seu Client ID
+        let scope = 'https://www.googleapis.com/auth/spreadsheets';
 
-        let isAuthenticated = false;
+        function onApiLoad() {
+            gapi.load('client:auth2', initClient);
+        }
 
         function initClient() {
             gapi.client.init({
-                apiKey: API_KEY,
-                clientId: CLIENT_ID,
-                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-                scope: "https://www.googleapis.com/auth/spreadsheets"
-            }).then(function () {
-                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-            });
-        }
-
-        function updateSigninStatus(isSignedIn) {
-            if (isSignedIn) {
-                isAuthenticated = true;
-                console.log('Autenticado com sucesso!');
-            } else {
-                gapi.auth2.getAuthInstance().signIn();
-            }
-        }
-
-        function updateSheet(qrData) {
-            if (!isAuthenticated) {
-                console.error('Usuário não autenticado');
-                return;
-            }
-
-            const anoAtual = new Date().getFullYear();
-            let range = '';
-            let values = [];
-
-            // Separar identificador e número do QR code
-            const [identificador, numero] = qrData.split(' ');
-            const num = numero.split('-')[0]; // Extrair apenas o número (sem ano)
-
-            let colIndex, searchColumn;
-            if (identificador === 'OF') {
-                colIndex = 1; // Coluna 1 para OF
-                searchColumn = 'A:A';
-                values = [["Atualizado", new Date()]]; // Dados a serem atualizados
-            } else if (identificador === 'CI') {
-                colIndex = 14; // Coluna 14 para CI
-                searchColumn = 'O:O';
-                values = [["Atualizado", new Date()]]; // Dados a serem atualizados
-            } else {
-                console.error("Tipo de documento não reconhecido.");
-                return;
-            }
-
-            // Buscar o número na coluna específica
-            const request = gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: searchColumn
-            });
-
-            request.then(response => {
-                const data = response.result.values;
-                let cellToUpdate = '';
-                let rowIndex = -1;
-
-                // Encontrar a linha onde o número está presente
-                for (let i = 0; i < data.length; i++) {
-                    if (data[i][0] === num) {
-                        rowIndex = i + 1; // Ajustar índice para a linha correta
-                        cellToUpdate = `${SHEET_NAME}!${colIndex}${rowIndex}`;
-                        break;
-                    }
-                }
-
-                if (rowIndex === -1) {
-                    console.error("Número não encontrado.");
-                    return;
-                }
-
-                // Atualizar a célula específica
-                const updateRequest = gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: cellToUpdate,
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: [["Atualizado", new Date().toISOString()]]
-                    }
+                apiKey: apiKey,
+                clientId: clientId,
+                scope: scope
+            }).then(() => {
+                gapi.auth2.getAuthInstance().signIn().then(() => {
+                    console.log('Autenticado com sucesso');
                 });
-
-                updateRequest.then(function(response) {
-                    console.log('Planilha atualizada com sucesso:', response.result);
-                }, function(reason) {
-                    console.error('Erro ao atualizar a planilha:', reason.result.error.message);
-                });
-
-            }, reason => {
-                console.error('Erro ao obter os valores da planilha:', reason.result.error.message);
             });
         }
 
-        // Inicializa a API
-        gapi.load('client:auth2', initClient);
-
-        const codeReader = new ZXing.BrowserQRCodeReader();
-        const videoElement = document.getElementById('video');
-        const resultElement = document.getElementById('result');
-
-        codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
-            if (result) {
-                const qrData = result.text;
-                resultElement.innerText = `QR Code lido: ${qrData}`;
-                updateSheet(qrData); // Atualiza a planilha com os dados lidos
+        async function updateSheet(range, values) {
+            try {
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: sheetId,
+                    range: range,
+                    valueInputOption: 'USER_ENTERED',
+                    values: [values]
+                });
+                console.log(`Dados atualizados com sucesso para: ${range}`);
+            } catch (error) {
+                console.error(`Erro ao atualizar planilha: ${error}`);
             }
-            if (error) {
-                console.error(error);
+        }
+
+        function handleScan(result) {
+            let data = result.text;
+            let now = new Date();
+            let dateString = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+
+            if (data.startsWith('OF')) {
+                let parts = data.split(' ');
+                let number = parts[1];
+                let searchTerm = `${number}/SAJ/${now.getFullYear()}`;
+                let range = 'Atual!A:F'; // Ajuste o range conforme necessário
+                let values = [dateString, 'CX Aguardando protocolo'];
+
+                // Adiciona a lógica para buscar e atualizar a planilha
+                console.log(`Procurando por: ${searchTerm}`);
+                updateSheet(range, values);
+            } else if (data.startsWith('CI')) {
+                let parts = data.split(' ');
+                let number = parts[1];
+                let searchTerm = `${number}-SAJ-${now.getFullYear()}`;
+                let range = 'Atual!N:P'; // Ajuste o range conforme necessário
+                let values = [dateString, 'CX aguardando resposta'];
+
+                // Adiciona a lógica para buscar e atualizar a planilha
+                console.log(`Procurando por: ${searchTerm}`);
+                updateSheet(range, values);
             }
-        }).catch(err => {
-            console.error(err);
-        });
+        }
+
+        function startScanner() {
+            let html5QrCode = new Html5Qrcode("reader");
+
+            html5QrCode.start({ facingMode: "environment" }, {
+                fps: 10,
+                qrbox: 250
+            }, handleScan).catch((error) => {
+                console.error(`Erro ao iniciar o scanner: ${error}`);
+            });
+        }
+
+        startScanner();
+        onApiLoad();
     </script>
 </body>
 </html>
