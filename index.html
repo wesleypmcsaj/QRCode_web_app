@@ -21,7 +21,7 @@
                 if (result) {
                     let qrData = result.text.trim();
                     resultElement.innerText = `QR Code lido: ${qrData}`;
-                    
+
                     // Formatar o dado conforme o prefixo
                     let formattedData = {};
                     if (qrData.startsWith("CI")) {
@@ -33,34 +33,40 @@
                     } else {
                         resultElement.innerText += " - Erro: Formato de QR Code não reconhecido.";
                         return;
-                    } //1Ka-6GQKys3YHj-JZ0Tp9Ll2BuMxe0r_ZrFa0JM1BnCvyaQ_Pqn6jezDK
-                    //https://script.google.com/macros/s/AKfycbwer4vIAKTKxhqbAyK_PC5bP29PbjaSTRnBG-35hwgVwiqP1OCB_fyxP2YTDZgdT2lQ/exec
+                    }
+
                     // Enviar dados para o Google Apps Script
-                    fetch('https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec', {  // Substitua pela URL do seu aplicativo da web
+                    fetch('https://script.google.com/macros/s/AKfycbyWYo0k2Y-KTFTKDpIUI-dJNb24Za-En1n3kmVOM59p2o5LizeWYtKegkaUTF4xLjDa/exec', {  // Substitua pela URL do seu aplicativo da web
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(formattedData),
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Erro HTTP: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             resultElement.innerText += ` - ${data.message}`;
                         } else {
-                            resultElement.innerText += ` - Erro: ${data.message}`;
+                            resultElement.innerText += ` - Erro no servidor: ${data.message}`;
                         }
                     })
                     .catch(error => {
                         console.error('Erro ao enviar dados:', error);
-                        resultElement.innerText += " - Erro ao enviar dados para o servidor.";
+                        resultElement.innerText += ` - Erro ao enviar dados: ${error.message}`;
                     });
                 }
                 if (error) {
-                    console.error(error);
+                    console.error('Erro no QR code:', error);
+                    resultElement.innerText += ` - Erro no QR code: ${error.message}`;
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => console.error('Erro na leitura da câmera:', err));
     </script>
 </body>
 </html>
