@@ -11,62 +11,59 @@
     <video id="video" width="100%" height="auto" style="border: 1px solid black;"></video>
     <div id="result"></div>
 
-    <script>//
+    <script>
+        const resultElement = document.getElementById('result');
+
+        function enviarDados(data) {
+            // Enviar dados para o Google Apps Script
+            fetch('https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(responseData => {
+                if (responseData.success) {
+                    resultElement.innerText += ` - Enviado: ${data.data}, Resposta: ${responseData.message}`;
+                } else {
+                    resultElement.innerText += ` - Erro ao enviar ${data.data}: ${responseData.message}`;
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao enviar dados:', error);
+                resultElement.innerText += ` - Erro ao enviar ${data.data}: ${error.message}`;
+            });
+        }
+
+        // Enviar dado "OF 7777" assim que a página carregar
+        window.onload = () => {
+            resultElement.innerText = "Enviando 'OF 7777'...";
+            enviarDados({ data: "OF 7777" });
+
+            // Após 10 segundos, enviar "CI 7777"
+            setTimeout(() => {
+                resultElement.innerText += "\nEnviando 'CI 7777'...";
+                enviarDados({ data: "CI 7777" });
+            }, 10000);
+        };
+
+        // Inicializar o leitor de QR Code (caso seja necessário mais tarde)
         const codeReader = new ZXing.BrowserQRCodeReader();
         const videoElement = document.getElementById('video');
-        const resultElement = document.getElementById('result');
 
         codeReader
             .decodeFromVideoDevice(null, videoElement, (result, error) => {
                 if (result) {
-                    let qrData = result.text.trim();
-                    resultElement.innerText = `QR Code lido: ${qrData}`;
-
-                    // Formatar o dado conforme o prefixo
-                    let formattedData = {};
-                    if (qrData.startsWith("CI")) {
-                        const numCi = qrData.split(" ")[1];  // Pega o número após "CI"
-                        formattedData = { data: `CI ${numCi}` };
-                    } else if (qrData.startsWith("OF")) {
-                        const numOficio = qrData.split(" ")[1];  // Pega o número após "OF"
-                        formattedData = { data: `OF ${numOficio}` };
-                    } else {
-                        resultElement.innerText += " - Erro: Formato de QR Code não reconhecido.";
-                        return;
-                    }
-
-                    // Enviar dados para o Google Apps Script
-                    fetch('https://script.google.com/macros/s/AKfycbyWYo0k2Y-KTFTKDpIUI-dJNb24Za-En1n3kmVOM59p2o5LizeWYtKegkaUTF4xLjDa/exec', {  // Substitua pela URL do seu aplicativo da web
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(formattedData),
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Erro HTTP: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            resultElement.innerText += ` - ${data.message}`;
-                        } else {
-                            resultElement.innerText += ` - Erro no servidor: ${data.message}`;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao enviar dados:', error);
-                        resultElement.innerText += ` - Erro ao enviar dados: ${error.message}`;
-                    });
+                    const qrData = result.text.trim();
+                    resultElement.innerText += `\nQR Code lido: ${qrData}`;
                 }
                 if (error) {
-                    console.error('Erro no QR code:', error);
-                    resultElement.innerText += ` - Erro no QR code: ${error.message}`;
+                    console.error(error);
                 }
             })
-            .catch(err => console.error('Erro na leitura da câmera:', err));
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>
