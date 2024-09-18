@@ -15,26 +15,26 @@
         const resultElement = document.getElementById('result');
 
         function enviarDados(data) {
-            // Enviar dados para o Google Apps Script
-            fetch('https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-            .then(response => response.json())
-            .then(responseData => {
-                if (responseData.success) {
-                    resultElement.innerText += ` - Enviado: ${data.data}, Resposta: ${responseData.message}`;
-                } else {
-                    resultElement.innerText += ` - Erro ao enviar ${data.data}: ${responseData.message}`;
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        const responseData = JSON.parse(xhr.responseText);
+                        if (responseData.success) {
+                            resultElement.innerText += ` - Enviado: ${data.data}, Resposta: ${responseData.message}`;
+                        } else {
+                            resultElement.innerText += ` - Erro ao enviar ${data.data}: ${responseData.message}`;
+                        }
+                    } else {
+                        resultElement.innerText += ` - Erro ao enviar ${data.data}: Código ${xhr.status}`;
+                    }
                 }
-            })
-            .catch(error => {
-                console.error('Erro ao enviar dados:', error);
-                resultElement.innerText += ` - Erro ao enviar ${data.data}: ${error.message}`;
-            });
+            };
+
+            xhr.send(JSON.stringify(data));
         }
 
         // Enviar dado "OF 7777" assim que a página carregar
@@ -49,7 +49,7 @@
             }, 10000);
         };
 
-        // Inicializar o leitor de QR Code (caso seja necessário mais tarde)
+        // Inicializar o leitor de QR Code
         const codeReader = new ZXing.BrowserQRCodeReader();
         const videoElement = document.getElementById('video');
 
@@ -58,6 +58,7 @@
                 if (result) {
                     const qrData = result.text.trim();
                     resultElement.innerText += `\nQR Code lido: ${qrData}`;
+                    enviarDados({ data: qrData });
                 }
                 if (error) {
                     console.error(error);
