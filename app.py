@@ -1,3 +1,6 @@
+#Eu posso excluir esse código sem problemas, já que ele é de outro programa, aqui somente me importa o html.
+
+
 from flask import Flask, request, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
