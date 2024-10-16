@@ -33,18 +33,6 @@
             });
         }
 
-        // Enviar dado "OF 7777" assim que a página carregar
-        window.onload = () => {
-            resultElement.innerText = "Enviando 'OF 7777'...";
-            enviarDados({ data: "OF 7777" });
-
-            // Após 10 segundos, enviar "CI 7777"
-            setTimeout(() => {
-                resultElement.innerText += "\nEnviando 'CI 7777'...";
-                enviarDados({ data: "CI 7777" });
-            }, 10000);
-        };
-
         // Inicializar o leitor de QR Code
         const codeReader = new ZXing.BrowserQRCodeReader();
         const videoElement = document.getElementById('video');
