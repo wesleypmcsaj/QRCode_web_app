@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -14,19 +14,22 @@
     <script>
         const resultElement = document.getElementById('result');
 
-        // Função para enviar os dados ao Apps Script usando no-cors
+        // Função para enviar os dados ao Apps Script
         function enviarDados(data) {
             fetch("https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                mode: 'no-cors', // Configuração para evitar problemas de CORS
                 body: JSON.stringify(data)
             })
-            .then(response => {
-                // No modo no-cors, não há como acessar o conteúdo da resposta
-                resultElement.innerText += `\nEnviado: ${data.data} (Sem resposta devido ao no-cors)`;
+            .then(response => response.json())
+            .then(responseData => {
+                if (responseData.success) {
+                    resultElement.innerText += `\nEnviado: ${data.data} - Resposta: ${responseData.message}`;
+                } else {
+                    resultElement.innerText += `\nErro ao enviar ${data.data}: ${responseData.message}`;
+                }
             })
             .catch(error => {
                 resultElement.innerText += `\nErro ao enviar ${data.data}: ${error.message}`;
