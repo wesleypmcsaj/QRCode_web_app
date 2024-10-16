@@ -14,6 +14,7 @@
     <script>
         const resultElement = document.getElementById('result');
 
+        // Função para enviar os dados ao Apps Script
         function enviarDados(data) {
             fetch("https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec", {
                 method: "POST",
@@ -25,13 +26,13 @@
             .then(response => response.json())
             .then(responseData => {
                 if (responseData.success) {
-                    resultElement.innerText += ` - Enviado: ${data.data}, Resposta: ${responseData.message}`;
+                    resultElement.innerText += `\nEnviado: ${data.data} - Resposta: ${responseData.message}`;
                 } else {
-                    resultElement.innerText += ` - Erro ao enviar ${data.data}: ${responseData.message}`;
+                    resultElement.innerText += `\nErro ao enviar ${data.data}: ${responseData.message}`;
                 }
             })
             .catch(error => {
-                resultElement.innerText += ` - Erro ao enviar ${data.data}: ${error.message}`;
+                resultElement.innerText += `\nErro ao enviar ${data.data}: ${error.message}`;
             });
         }
 
@@ -58,7 +59,7 @@
                     resultElement.innerText += `\nQR Code lido: ${qrData}`;
                     enviarDados({ data: qrData });
                 }
-                if (error) {
+                if (error && !(error instanceof ZXing.NotFoundException)) {
                     console.error(error);
                 }
             })
