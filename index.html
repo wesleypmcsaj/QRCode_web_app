@@ -13,6 +13,7 @@
 
     <script>
         const resultElement = document.getElementById('result');
+        let lastQRCodeData = null; // Variável para armazenar o último QR Code lido
 
         // Função para enviar os dados ao Apps Script usando no-cors
         function enviarDados(data) {
@@ -41,8 +42,13 @@
             .decodeFromVideoDevice(null, videoElement, (result, error) => {
                 if (result) {
                     const qrData = result.text.trim();
-                    resultElement.innerText += `\nQR Code lido: ${qrData}`;
-                    enviarDados({ data: qrData });
+
+                    // Verificar se o QR Code lido é diferente do último lido
+                    if (qrData !== lastQRCodeData) {
+                        lastQRCodeData = qrData; // Atualiza o último QR Code lido
+                        resultElement.innerText += `\nQR Code lido: ${qrData}`;
+                        enviarDados({ data: qrData });
+                    }
                 }
                 if (error && !(error instanceof ZXing.NotFoundException)) {
                     console.error(error);
