@@ -14,10 +14,13 @@
     <script>
         const resultElement = document.getElementById('result');
         let lastQRCodeData = null; // Variável para armazenar o último QR Code lido
+        // URL ANTIGA de 2024 https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec
 
+        // A URL nova é a que inseri dentro desse fetch logo abaixo
+        
         // Função para enviar os dados ao Apps Script usando no-cors
         function enviarDados(data) {
-            fetch("https://script.google.com/macros/s/AKfycbzNL97Op-T_Zks_iLn7EgJV6nL0WBIiJEToRdEfi9rNsCAkGDJ_Z96jOtUuzYv8SWI/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbx-JLode3PqPbTIwTFuRKqeoxXyYx32_V4yDGZHAHbs2I08NmTLdKFWaqrWtSxB1IGpPQ/exec", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
